@@ -11,7 +11,7 @@
 * 每次请求都签名，保证传输过程数据不被篡改
 * 客户端：sha256签名算法，将参数base64编码+app_secret用sha256签名，每次请求带上签名
 * 服务端：拿到参数用相同的算法签名，对比签名是否正确
-    
+
 ### sdk 使用说明
 
 * 环境：python >=3.5
@@ -27,35 +27,38 @@
     针对所有请求，uri与get参数是分离的，如 http://apiv4.yundun.com/api/V4/version?v=1, 调用时v=1参数，须通过query传递
         raw, body, err = sdk.get('version', query={'v': 1})
 
+### 安装
+
+pip install ydsdk
 
 ### 使用
 
 ```
 ### 实例化 YdSdk
-from ydsdk.ydsdk import YdSdk
+from ydsdk import YdSdk
 
 sdk = YdSdk({
-    "app_id": 'KjCBrsqvrKH2fjSiYx9J',
-    "app_secert": 'ade3f5cbb354b1e91d72bd9ddd242595', 
+    "app_id": 'xxxxxxxxxxx',
+    "app_secert": 'xxxxxxxxxxxxx', 
     "api_pre": "http://apiv4.yundun.comn/api/V4/",
-    'user_id': 88350, 
+    'user_id': 1, 
     "timeout": 30,
 })
 
 ### get 方式请求数据
-raw, jsonData, err = sdk.get('version')
+raw, jsonData, err = sdk.get('test')
 print(raw, jsonData, err)
 
 ### post 方式请求数据
 query    = {}
 postData = {'domain_id': 1, 'status': 2}
-raw, body, err = sdk.post('firewall.turn_status', postData = postData, query=query)
+raw, body, err = sdk.post('test.save', postData = postData, query=query)
 print(raw, jsonData, err)
 
 ### patch 方式请求数据
 query    = {}
 postData = {'domain_id': 1, 'status': 2}
-raw, body, err = sdk.patch('firewall.turn_status', postData = postData, query=query)
+raw, body, err = sdk.patch('test.save', postData = postData, query=query)
 if err != "":
     print("error: ", err)
 else:
@@ -64,19 +67,19 @@ else:
 ### put 方式请求数据
 query    = {}
 postData = {'domain_id': 1, 'status': 2}
-raw, body, err = sdk.put('firewall.turn_status', postData = postData, query=query)
+raw, body, err = sdk.put('test.save', postData = postData, query=query)
 print(raw, jsonData, err)
 
 ### delete 方式请求数据
 query    = {}
 postData = {'domain_id': 1, 'status': 2}
-raw, body, err = sdk.put('firewall.turn_status', postData = postData, query=query)
+raw, body, err = sdk.put('test.save', postData = postData, query=query)
 print(raw, jsonData, err)
 
 
 ### put方式请求数据
 query    = {}
 postData = {'domain_id': 1, 'status': 2}
-raw, body, err = sdk.put('firewall.turn_status', postData = postData, query=query)
+raw, body, err = sdk.put('test.save', postData = postData, query=query)
 print(raw, jsonData, err)
 ```
