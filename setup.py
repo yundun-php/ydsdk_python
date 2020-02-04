@@ -1,11 +1,12 @@
 import setuptools
+from ydsdk import version
 
 with open("readme.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="ydsdk",
-    version="0.1.4",
+    name = "ydsdk",
+    version=version,
     author="lideqiang",
     author_email="lideqiang@yundun.com",
     description="Yundun Api Sdk For Python",

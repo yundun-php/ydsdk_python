@@ -35,14 +35,30 @@ pip install ydsdk
 
 ```
 ### 实例化 YdSdk
+import logging
 from ydsdk import YdSdk
+
+## 添加日志
+logger = logging.getLogger()
+formatter = logging.Formatter('%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s')
+
+##日志输出到文件
+fileHandle = logging.FileHandler('/tmp/ydsdk.log', encoding='utf-8')
+fileHandle.setFormatter(formatter)
+logger.addHandler(fileHandle)
+
+##日志输出到stdout
+streamHandle = logging.StreamHandler()
+streamHandle.setFormatter(formatter)
+logger.addHandler(streamHandle)
 
 sdk = YdSdk({
     "app_id": 'xxxxxxxxxxx',
     "app_secert": 'xxxxxxxxxxxxx', 
     "api_pre": "http://apiv4.yundun.comn/api/V4/",
-    'user_id': 1, 
+    "user_id": 1, 
     "timeout": 30,
+    "logger": logger,               ##如果不需要，此参数可不传
 })
 
 ### get 方式请求数据

@@ -1,15 +1,48 @@
 import ssl
 import json
+import time
+import socket
 import string
 import urllib
-from time import time
+import platform
 import hashlib, base64, hmac
+from inspect import ismethod
 from collections import OrderedDict
 from socket import timeout as timeoutError
 from urllib.error import URLError, HTTPError
 from urllib.parse import quote, unquote, urlencode
 from urllib.request import Request, urlopen, HTTPRedirectHandler, build_opener
 from urllib.request import HTTPBasicAuthHandler, HTTPPasswordMgrWithDefaultRealm, ProxyHandler, ProxyBasicAuthHandler, HTTPSHandler
+
+version = "0.1.4"
+
+machineIpCount = 0
+machineIp = "0.0.0.0"
+machineIpLastArgsKey = ""
+def get_machine_ip(ipVersion = 4, dest="119.29.29.29", port=53):
+    """查询本机ip地址: 网络通发udp包取IP; 网络不通，根据host取ip"""
+    global machineIp, machineIpCount, machineIpLastArgsKey
+    argsKey = "%d-%s-%d" % (ipVersion, dest, port)
+    if machineIp != "0.0.0.0" and argsKey == machineIpLastArgsKey and machineIpCount < 100:
+        machineIpCount = machineIpCount + 1
+        return machineIp
+
+    machineIpCount = 0
+    machineIpLastArgsKey = argsKey
+    try:
+        if ipVersion == 4:
+            procotol = socket.AF_INET
+        else:
+            procotol = socket.AF_INET6
+        s = socket.socket(procotol, socket.SOCK_DGRAM)
+        s.connect((dest, port))
+        machineIp = s.getsockname()[0]
+    except:
+        ## 网络不通，取host
+        machineIp = socket.gethostbyname(socket.getfqdn(socket.gethostname()))
+    finally:
+        s.close()
+    return machineIp
 
 def url_encoder(params):
     g_encode_params = {}
@@ -63,13 +96,30 @@ class YdSdk:
 
     示例：
         ### 实例化 YdSdk
+        import logging
         from ydsdk import YdSdk
+
+        ## 添加日志
+        logger = logging.getLogger()
+        formatter = logging.Formatter('%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s')
+        
+        ##日志输出到文件
+        fileHandle = logging.FileHandler('/tmp/ydsdk.log', encoding='utf-8')
+        fileHandle.setFormatter(formatter)
+        logger.addHandler(fileHandle)
+        
+        ##日志输出到stdout
+        streamHandle = logging.StreamHandler()
+        streamHandle.setFormatter(formatter)
+        logger.addHandler(streamHandle)
+
         sdk = YdSdk({
             "app_id": 'xxxxxxxxxxxxxxxx',
             "app_secert": 'xxxxxxxxxxxxxxxxxxxxxxxxxx', 
             "api_pre": "http://apiv4.yundun.comn/api/V4/",
-            'user_id': 1, 
+            "user_id": 1, 
             "timeout": 30,
+            "logger": logger,               ##如果不需要，此参数可不传
         })
 
         ### get 方式请求数据
@@ -93,22 +143,31 @@ class YdSdk:
     _timeout = 30                                               ## 超时设置
     _userId = 0                                                 ## 用户ID
     _clientIp = ""                                              ## 客户端IP
-    _userAgent = ""                                             ## userAgent
+    _userAgent = ""                                             ## userAgent, 内置
+    _logger = None
 
     def __init__(self, params = {}):
+        global version
+        uname = platform.uname()
         self._appId         = 'app_id' in params     and params['app_id']       or ''
         self._appSecert     = 'app_secert' in params and params['app_secert']   or ''
         self._userId        = 'user_id' in params    and params['user_id']      or 0
-        self._clientIp      = 'client_ip' in params  and params['client_ip']    or ''
-        self._userAgent     = 'userAgent' in params  and params['userAgent']    or ''
+        self._clientIp      = get_machine_ip()                                                      ## 自动取机器IP
+        self._userAgent     = 'YdSdk %s; Python-urllib/%s; %s %s' % (version, platform.python_version(), uname[0], uname[2])
         self._apiPre        = 'api_pre' in params    and params['api_pre'] or ''
         self._host          = 'host' in params       and params['host']         or ''
         self._timeout       = 'timeout' in params    and params['timeout']      or 30
         self._apiPre = (len(self._apiPre) > 0 and self._apiPre[-1] == '/') and self._apiPre[0:-1] or ("%s/" % self._apiPre)
+        if 'logger' in params:
+            logger = params['logger']
+            if ismethod(logger.debug) and ismethod(logger.info) and ismethod(logger.warning) and ismethod(logger.error):
+                self._logger = logger
+            else:
+                raise Exception("logger object must has function: debug/info/warning/error")
 
     def sign(self, data={}):
         data['algorithm'] = 'HMAC-SHA256'
-        data['issued_at'] = time()
+        data['issued_at'] = time.time()
         jraw = json.dumps(data, separators=(',', ':'))
         base64Raw = base64.b64encode(jraw.encode('utf-8'))
         sign = base64.b64encode(hmac.new(self._appSecert.encode('utf-8'), base64Raw, digestmod=hashlib.sha256).digest())
@@ -131,6 +190,7 @@ class YdSdk:
         headers['X-Auth-Sign']   = self.sign(orderPayload)
         headers['X-Auth-App-Id'] = self._appId
         headers['Content-Type']  = "application/json;charset=utf-8"
+        headers['User-Agent']    = self._userAgent
         if self._host != "": headers['HOST']  = self._host
         return orderPayload, headers
 
@@ -140,8 +200,8 @@ class YdSdk:
         bodyQuery = url_encoder(orderPayload)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result =  self.request(api, 'GET', headers=headers)
-        return self.parseResponse(result)
+        result, requestDataStr =  self.request(api, 'GET', headers=headers)
+        return self.parseResponse(result, requestDataStr)
 
     def post(self, api, query = {}, postData={}, headers = {}):
         '''POST请求'''
@@ -149,8 +209,8 @@ class YdSdk:
         bodyQuery = url_encoder(query)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result =  self.request(api, 'POST', data=orderPayload, headers=headers)
-        return self.parseResponse(result)
+        result, requestDataStr =  self.request(api, 'POST', data=orderPayload, headers=headers)
+        return self.parseResponse(result, requestDataStr)
 
     def patch(self, api, query = {}, postData={}, headers = {}):
         '''PATCH请求'''
@@ -158,8 +218,8 @@ class YdSdk:
         bodyQuery = url_encoder(query)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result =  self.request(api, 'PATCH', data=orderPayload, headers=headers)
-        return self.parseResponse(result)
+        result, requestDataStr =  self.request(api, 'PATCH', data=orderPayload, headers=headers)
+        return self.parseResponse(result, requestDataStr)
 
     def put(self, api, query = {}, postData={}, headers = {}):
         '''PUT请求'''
@@ -167,8 +227,8 @@ class YdSdk:
         bodyQuery = url_encoder(query)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result =  self.request(api, 'PUT', data=orderPayload, headers=headers)
-        return self.parseResponse(result)
+        result, requestDataStr =  self.request(api, 'PUT', data=orderPayload, headers=headers)
+        return self.parseResponse(result, requestDataStr)
 
     def delete(self, api, query = {}, postData={}, headers = {}):
         '''DELETE请求'''
@@ -176,24 +236,30 @@ class YdSdk:
         bodyQuery = url_encoder(query)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result =  self.request(api, 'DELETE', data=orderPayload, headers=headers)
-        return self.parseResponse(result)
-    
-    def parseResponse(self, result):
+        result, requestDataStr =  self.request(api, 'DELETE', data=orderPayload, headers=headers)
+        return self.parseResponse(result, requestDataStr)
+
+    def parseResponse(self, result, requestDataStr):
         '''解析 response'''
-        body = result['body']
+        body = result['body'].decode('utf-8')
         if result['http_code'] == 0:
             return body, {}, result['error']
         else:
-            try: 
-                return body.decode('utf-8'), json.loads(body.decode('utf-8')), ""
-            except json.decoder.JSONDecodeError as e:
-                return body.decode('utf-8'), {}, "json decode error: %s" % e
+            if len(body) > 2 and body[0] == "{" and body[-1] == "}":
+                try:
+                    return body, json.loads(body), ""
+                except json.decoder.JSONDecodeError as e:
+                    if self._logger is not None: self._logger.error("%s responseBody: %s requestData: %s" % (repr(e), body, requestDataStr))
+                    return body, {}, "json decode error: %s" % repr(e)
+            else:
+                if self._logger is not None: self._logger.error('the response body is not json, responseBody: %s requestData: %s' % (body, requestDataStr))
+                return body, {}, 'the response body is not json'
 
-    def request(self, url=None, method="GET", data={}, headers={}, auth = {}, proxy={}):
+    def request(self, url=None, method="GET", data={}, headers={}, auth={}, proxy={}):
         '''发起请求'''
         method = method.upper()
-        start = time()
+        requestDataStr = json.dumps({"url": url, "method": method, "data": data, "headers": headers}, ensure_ascii=False)
+        start = time.time()
         try:
             #跳转记录
             redirect_handler = RedirectHandler()
@@ -229,7 +295,7 @@ class YdSdk:
             for key, value in headers.items():
                 request_handler.add_header(key, value)
             response = opener.open(request_handler, timeout=self._timeout)
-            end = time()
+            end = time.time()
             return {
                 'url': url,
                 'method': method,
@@ -240,9 +306,10 @@ class YdSdk:
                 'body': response.read(),
                 'nettime': end-start,
                 'error':''
-            }
+            }, requestDataStr
         except HTTPError as e:          # 400 401 402 403 500 501 502 503 504
-            end = time()
+            if self._logger is not None: self._logger.error("%s requestData: %s" % (repr(e), requestDataStr))
+            end = time.time()
             return {
                 'url': url,
                 'method': method,
@@ -253,9 +320,10 @@ class YdSdk:
                 'body': b'',
                 'nettime': end-start,
                 'error': repr(e)
-            }
+            }, requestDataStr
         except URLError as e:
-            end = time()
+            if self._logger is not None: self._logger.error("%s requestData: %s" % (repr(e), requestDataStr))
+            end = time.time()
             return {
                 'url': url,
                 'method': method,
@@ -266,9 +334,10 @@ class YdSdk:
                 'body': b'',
                 'nettime': end-start,
                 'error': repr(e)
-            }
+            }, requestDataStr
         except timeoutError as e:
-            end = time()
+            if self._logger is not None: self._logger.error("%s requestData: %s" % (repr(e), requestDataStr))
+            end = time.time()
             return {
                 'url': url,
                 'method': method,
@@ -279,8 +348,9 @@ class YdSdk:
                 'body': b'',
                 'nettime': end-start,
                 'error': repr(e)
-            }
+            }, requestDataStr
         except Exception as e:
+            if self._logger is not None: self._logger.error("%s requestData: %s" % (repr(e), requestDataStr))
             return {
                 'url': url,
                 'method': method,
@@ -291,5 +361,6 @@ class YdSdk:
                 'body': b'',
                 'nettime': 0,
                 'error': repr(e)
-            }
+            }, requestDataStr
 
+__all__ = ["get_machine_ip", "YdSdk"]
