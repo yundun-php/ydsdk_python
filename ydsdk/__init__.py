@@ -199,7 +199,7 @@ class YdSdk:
         orderPayload, headers = self._payload(query, headers)
         bodyQuery = url_encoder(orderPayload)
 
-        api = bodyQuery == "" and "%s/%s" % (self._apiPre) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
+        api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
         result, requestDataStr =  self.request(api, 'GET', headers=headers)
         return self.parseResponse(result, requestDataStr)
 
@@ -208,7 +208,7 @@ class YdSdk:
         orderPayload, headers = self._payload(postData, headers)
         bodyQuery = url_encoder(query)
 
-        api = bodyQuery == "" and "%s/%s" % (self._apiPre) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
+        api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
         result, requestDataStr =  self.request(api, 'POST', data=orderPayload, headers=headers)
         return self.parseResponse(result, requestDataStr)
 
@@ -217,7 +217,7 @@ class YdSdk:
         orderPayload, headers = self._payload(postData, headers)
         bodyQuery = url_encoder(query)
 
-        api = bodyQuery == "" and "%s/%s" % (self._apiPre) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
+        api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
         result, requestDataStr =  self.request(api, 'PATCH', data=orderPayload, headers=headers)
         return self.parseResponse(result, requestDataStr)
 
@@ -226,7 +226,7 @@ class YdSdk:
         orderPayload, headers = self._payload(postData, headers)
         bodyQuery = url_encoder(query)
 
-        api = bodyQuery == "" and "%s/%s" % (self._apiPre) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
+        api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
         result, requestDataStr =  self.request(api, 'PUT', data=orderPayload, headers=headers)
         return self.parseResponse(result, requestDataStr)
 
@@ -235,7 +235,7 @@ class YdSdk:
         orderPayload, headers = self._payload(postData, headers)
         bodyQuery = url_encoder(query)
 
-        api = bodyQuery == "" and "%s/%s" % (self._apiPre) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
+        api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
         result, requestDataStr =  self.request(api, 'DELETE', data=orderPayload, headers=headers)
         return self.parseResponse(result, requestDataStr)
 
