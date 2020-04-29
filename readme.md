@@ -55,7 +55,7 @@ logger.addHandler(streamHandle)
 sdk = YdSdk({
     "app_id": 'xxxxxxxxxxx',
     "app_secert": 'xxxxxxxxxxxxx', 
-    "api_pre": "http://apiv4.yundun.comn/api/V4/",
+    "api_pre": "http://apiv4.yundun.com/api/V4/",
     "user_id": 1, 
     "timeout": 30,
     "logger": logger,               ##如果不需要，此参数可不传

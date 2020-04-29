@@ -116,7 +116,7 @@ class YdSdk:
         sdk = YdSdk({
             "app_id": 'xxxxxxxxxxxxxxxx',
             "app_secert": 'xxxxxxxxxxxxxxxxxxxxxxxxxx', 
-            "api_pre": "http://apiv4.yundun.comn/api/V4/",
+            "api_pre": "http://apiv4.yundun.com/api/V4/",
             "user_id": 1, 
             "timeout": 30,
             "logger": logger,               ##如果不需要，此参数可不传
