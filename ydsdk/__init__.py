@@ -14,7 +14,7 @@ from urllib.parse import quote, unquote, urlencode
 from urllib.request import Request, urlopen, HTTPRedirectHandler, build_opener
 from urllib.request import HTTPBasicAuthHandler, HTTPPasswordMgrWithDefaultRealm, ProxyHandler, ProxyBasicAuthHandler, HTTPSHandler
 
-version = "0.1.7"
+version = "0.1.8"
 
 machineIpCount = 0
 machineIp = "0.0.0.0"
@@ -92,7 +92,7 @@ class YdSdk:
         timeout 请求超时时间，默认10秒，请合理设置
     每次调用会返回三个参数：(原始字符串，解析后的json字典，错误字符串)
     注意事项
-        针对所有请求，uri与get参数是分离的，如 http://apiv4.yundun.com/V4/version?v=1, 调用时v=1参数，须通过query传递
+        针对所有请求，uri与get参数是分离的，如 https://apiv4.yundun.com/V4/version?v=1, 调用时v=1参数，须通过query传递
 
     示例：
         ### 实例化 YdSdk
@@ -116,7 +116,7 @@ class YdSdk:
         sdk = YdSdk({
             "app_id": 'xxxxxxxxxxxxxxxx',
             "app_secert": 'xxxxxxxxxxxxxxxxxxxxxxxxxx', 
-            "api_pre": "http://apiv4.yundun.com/V4/",
+            "api_pre": "https://apiv4.yundun.com/V4/",
             "user_id": 1, 
             "timeout": 30,
             "logger": logger,               ##如果不需要，此参数可不传

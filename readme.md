@@ -2,7 +2,7 @@
 
 ### 说明
 
-* 接口基地址： 'http://apiv4.yundun.com/V4/';
+* 接口基地址： 'https://apiv4.yundun.com/V4/';
 * 接口遵循RESTful,默认请求体json,接口默认返回json
 * app_id, app_secret 联系技术客服，先注册一个云盾的账号，用于申请绑定api身份
 
@@ -24,7 +24,7 @@
     * timeout 请求超时时间，默认10秒，请合理设置
 * 每次调用会返回三个参数：(原始字符串，解析后的json字典，错误字符串)
 * 注意事项
-    针对所有请求，uri与get参数是分离的，如 http://apiv4.yundun.com/V4/version?v=1, 调用时v=1参数，须通过query传递
+    针对所有请求，uri与get参数是分离的，如 https://apiv4.yundun.com/V4/version?v=1, 调用时v=1参数，须通过query传递
         raw, body, err = sdk.get('version', query={'v': 1})
 
 ### 安装
@@ -55,7 +55,7 @@ logger.addHandler(streamHandle)
 sdk = YdSdk({
     "app_id": 'xxxxxxxxxxx',
     "app_secert": 'xxxxxxxxxxxxx', 
-    "api_pre": "http://apiv4.yundun.com/V4/",
+    "api_pre": "https://apiv4.yundun.com/V4/",
     "user_id": 1, 
     "timeout": 30,
     "logger": logger,               ##如果不需要，此参数可不传
