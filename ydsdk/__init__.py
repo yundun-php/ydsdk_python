@@ -14,11 +14,23 @@ from urllib.parse import quote, unquote, urlencode
 from urllib.request import Request, urlopen, HTTPRedirectHandler, build_opener
 from urllib.request import HTTPBasicAuthHandler, HTTPPasswordMgrWithDefaultRealm, ProxyHandler, ProxyBasicAuthHandler, HTTPSHandler
 
-version = "0.1.8"
+version = "0.2.0"
 
 machineIpCount = 0
 machineIp = "0.0.0.0"
 machineIpLastArgsKey = ""
+
+def ksort(raw):
+    orderData = OrderedDict({})
+    kAll = raw.keys()
+    kSort = sorted(kAll)
+    for k in kSort:
+        if isinstance(raw[k], dict):
+            orderData[k] = ksort(raw[k])
+        else:
+            orderData[k] = raw[k]
+    return orderData
+
 def get_machine_ip(ipVersion = 4, dest="119.29.29.29", port=53):
     """查询本机ip地址: 网络通发udp包取IP; 网络不通，根据host取ip"""
     global machineIp, machineIpCount, machineIpLastArgsKey
@@ -166,11 +178,15 @@ class YdSdk:
 
     def sign(self, data={}):
         data['algorithm'] = 'HMAC-SHA256'
-        data['issued_at'] = time.time()
-        jraw = json.dumps(data, separators=(',', ':'))
+        data['issued_at'] = str(time.time())
+        orderData = ksort(data)
+        jraw = json.dumps(orderData, separators=(',', ':'))
         base64Raw = base64.b64encode(jraw.encode('utf-8'))
         sign = base64.b64encode(hmac.new(self._appSecert.encode('utf-8'), base64Raw, digestmod=hashlib.sha256).digest())
-        return "%s.%s" % (sign.decode('utf-8'), base64Raw.decode('utf-8'))
+        signStr = sign.decode('utf-8')
+        signReplace = signStr.replace("+", "-")
+        signReplace = signReplace.replace("/", "_")
+        return signReplace
 
     def formatHeaders(self, headers = {}):
         '''格式化header头'''
@@ -181,17 +197,17 @@ class YdSdk:
 
     def _payload(self, payload = {}, headers = {}):
         '''构造payload数据, 并对数据做签名'''
-        payload['user_id']          = self._userId
+        payload['user_id']          = str(self._userId)
         payload['client_ip']        = self._clientIp
         payload['client_userAgent'] = self._userAgent
-        orderPayload = OrderedDict({'body': payload})
 
-        headers['X-Auth-Sign']   = self.sign(orderPayload)
+        headers['X-Auth-Sign']   = self.sign(payload)
         headers['X-Auth-App-Id'] = self._appId
+        headers['X-Auth-Sdk-Version'] = '1.0.3'
         headers['Content-Type']  = "application/json;charset=utf-8"
         headers['User-Agent']    = self._userAgent
         if self._host != "": headers['HOST']  = self._host
-        return orderPayload, headers
+        return payload, headers
 
     def get(self, api, query = {}, headers = {}):
         '''GET请求'''
