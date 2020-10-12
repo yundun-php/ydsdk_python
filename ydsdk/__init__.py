@@ -149,15 +149,14 @@ class YdSdk:
     def __init__(self, params = {}):
         global version
         uname = platform.uname()
-        self._appId         = 'app_id' in params     and params['app_id']       or ''
-        self._appSecert     = 'app_secert' in params and params['app_secert']   or ''
-        self._userId        = 'user_id' in params    and params['user_id']      or 0
-        self._clientIp      = get_machine_ip()                                                      ## 自动取机器IP
-        self._userAgent     = 'YdSdk %s; Python-urllib/%s; %s %s' % (version, platform.python_version(), uname[0], uname[2])
-        self._apiPre        = 'api_pre' in params    and params['api_pre'] or ''
-        self._host          = 'host' in params       and params['host']         or ''
-        self._timeout       = 'timeout' in params    and params['timeout']      or 30
-        self._apiPre = (len(self._apiPre) > 0 and self._apiPre[-1] == '/') and self._apiPre[0:-1] or ("%s/" % self._apiPre)
+        self._appId     = 'app_id' in params     and params['app_id']       or ''
+        self._appSecert = 'app_secert' in params and params['app_secert']   or ''
+        self._userId    = 'user_id' in params    and params['user_id']      or 0
+        self._clientIp  = get_machine_ip()                                                      ## 自动取机器IP
+        self._userAgent = 'YdSdk %s; Python-urllib/%s; %s %s' % (version, platform.python_version(), uname[0], uname[2])
+        self._apiPre    = 'api_pre' in params    and params['api_pre'].rstrip("/")      or ''
+        self._host      = 'host' in params       and params['host']         or ''
+        self._timeout   = 'timeout' in params    and params['timeout']      or 30
         if 'logger' in params:
             logger = params['logger']
             if ismethod(logger.debug) and ismethod(logger.info) and ismethod(logger.warning) and ismethod(logger.error):
@@ -196,6 +195,7 @@ class YdSdk:
 
     def get(self, api, query = {}, headers = {}):
         '''GET请求'''
+        api = api.lstrip("/")
         orderPayload, headers = self._payload(query, headers)
         bodyQuery = url_encoder(orderPayload)
 
@@ -205,6 +205,7 @@ class YdSdk:
 
     def post(self, api, query = {}, postData={}, headers = {}):
         '''POST请求'''
+        api = api.lstrip("/")
         orderPayload, headers = self._payload(postData, headers)
         bodyQuery = url_encoder(query)
 
@@ -214,6 +215,7 @@ class YdSdk:
 
     def patch(self, api, query = {}, postData={}, headers = {}):
         '''PATCH请求'''
+        api = api.lstrip("/")
         orderPayload, headers = self._payload(postData, headers)
         bodyQuery = url_encoder(query)
 
@@ -223,6 +225,7 @@ class YdSdk:
 
     def put(self, api, query = {}, postData={}, headers = {}):
         '''PUT请求'''
+        api = api.lstrip("/")
         orderPayload, headers = self._payload(postData, headers)
         bodyQuery = url_encoder(query)
 
@@ -232,6 +235,7 @@ class YdSdk:
 
     def delete(self, api, query = {}, postData={}, headers = {}):
         '''DELETE请求'''
+        api = api.lstrip("/")
         orderPayload, headers = self._payload(postData, headers)
         bodyQuery = url_encoder(query)
 
