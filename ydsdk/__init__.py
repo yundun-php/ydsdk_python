@@ -15,24 +15,43 @@ from urllib.parse import quote, unquote, urlencode
 from urllib.request import Request, urlopen, HTTPRedirectHandler, build_opener
 from urllib.request import HTTPBasicAuthHandler, HTTPPasswordMgrWithDefaultRealm, ProxyHandler, ProxyBasicAuthHandler, HTTPSHandler
 
-version = "0.2.1"
+version = "0.2.2"
 
 machineIpCount = 0
 machineIp = "0.0.0.0"
 machineIpLastArgsKey = ""
 
+## 字典转为有序字典
+def toOrderedDict(raw):
+    rawCopy = copy.deepcopy(raw)
+    for k,v in rawCopy.items():
+        if isinstance(v, dict):
+            rawCopy[k] = toOrderedDict(v)
+    return OrderedDict(rawCopy)
+
+## 字典所有的值转字符串
+def dictValueToStr(raw):
+    rawCopy = copy.deepcopy(raw)
+    for k,v in rawCopy.items():
+        if isinstance(v, dict):
+            rawCopy[k] = dictValueToStr(v)
+        else:
+            rawCopy[k] = str(v)
+    return rawCopy
+
+## 只排序一维key
 def ksort(raw, dataFrom = ''):
     orderData = OrderedDict({})
     kAll = raw.keys()
     kSort = sorted(kAll)
     for k in kSort:
-        if isinstance(raw[k], dict):
-            orderData[k] = ksort(raw[k], dataFrom)
-        else:
-            if dataFrom == "get":
-                orderData[k] = str(raw[k])
-            else:
+        if dataFrom == "get":
+            if isinstance(raw[k], dict):
                 orderData[k] = raw[k]
+            else:
+                orderData[k] = str(raw[k])
+        else:
+            orderData[k] = raw[k]
     return orderData
 
 def get_machine_ip(ipVersion = 4, dest="119.29.29.29", port=53):
@@ -181,8 +200,6 @@ class YdSdk:
                 raise Exception("logger object must has function: debug/info/warning/error")
 
     def sign(self, data={}, dataFrom = ''):
-        data['algorithm'] = 'HMAC-SHA256'
-        data['issued_at'] = str(time.time())
         signData = copy.deepcopy(data)
         if "_files" in signData: del signData["_files"]
 
@@ -202,68 +219,86 @@ class YdSdk:
             headersDict[row[0]] = row[1]
         return headersDict
 
-    def _payload(self, payload = {}, headers = {}, dataFrom = ''):
+    def _payload(self, query = {}, postData = {}, headers = {}, dataFrom = ''):
         '''构造payload数据, 并对数据做签名'''
-        payload['user_id']          = str(self._userId)
-        payload['client_ip']        = self._clientIp
-        payload['client_userAgent'] = self._userAgent
+        if dataFrom == 'get':
+            query['user_id']          = str(self._userId)
+            query['client_ip']        = self._clientIp
+            query['client_userAgent'] = self._userAgent
+            query['algorithm']        = 'HMAC-SHA256'
+            query['issued_at']        = str(time.time())
+        else:
+            postData['user_id']          = self._userId
+            postData['client_ip']        = self._clientIp
+            postData['client_userAgent'] = self._userAgent
+            postData['algorithm']        = 'HMAC-SHA256'
+            postData['issued_at']        = str(time.time())
+        query = dictValueToStr(query)
+        signData = copy.deepcopy(query)
+        for k, v in postData.items():
+            signData[k] = v
+        ##orderPayload = OrderedDict(payload)
+        orderQuery = toOrderedDict(query)
+        orderPostData = toOrderedDict(postData)
+        orderSignData = toOrderedDict(signData)
 
-        headers['X-Auth-Sign']   = self.sign(payload, dataFrom)
+        headers['X-Auth-Sign']   = self.sign(orderSignData, dataFrom)
         headers['X-Auth-App-Id'] = self._appId
         headers['X-Auth-Sdk-Version'] = '1.0.3'
         headers['Content-Type']  = "application/json;charset=utf-8"
         headers['User-Agent']    = self._userAgent
         if self._host != "": headers['HOST']  = self._host
-        return payload, headers
+        return orderQuery, orderPostData, headers
 
-    def get(self, api, query = {}, headers = {}):
+    def get(self, api, query={}, headers={}):
         '''GET请求'''
         api = api.lstrip("/")
-        orderPayload, headers = self._payload(query, headers, 'get')
-        bodyQuery = url_encoder(orderPayload)
+        dataFrom = 'get'
+        orderQuery, orderPostData, headers = self._payload(query=query, headers=headers, dataFrom = dataFrom)
+        bodyQuery = url_encoder(orderQuery)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
         result, requestDataStr =  self.request(api, 'GET', headers=headers)
         return self.parseResponse(result, requestDataStr)
 
-    def post(self, api, query = {}, postData={}, headers = {}):
+    def post(self, api, query={}, postData={}, headers={}):
         '''POST请求'''
         api = api.lstrip("/")
-        orderPayload, headers = self._payload(postData, headers)
-        bodyQuery = url_encoder(query)
+        orderQuery, orderPostData, headers = self._payload(query=query, postData = postData, headers = headers)
+        bodyQuery = url_encoder(orderQuery)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result, requestDataStr =  self.request(api, 'POST', data=orderPayload, headers=headers)
+        result, requestDataStr =  self.request(api, 'POST', data=orderPostData, headers=headers)
         return self.parseResponse(result, requestDataStr)
 
     def patch(self, api, query = {}, postData={}, headers = {}):
         '''PATCH请求'''
         api = api.lstrip("/")
-        orderPayload, headers = self._payload(postData, headers)
-        bodyQuery = url_encoder(query)
+        orderQuery, orderPostData, headers = self._payload(query=query, postData = postData, headers = headers)
+        bodyQuery = url_encoder(orderQuery)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result, requestDataStr =  self.request(api, 'PATCH', data=orderPayload, headers=headers)
+        result, requestDataStr =  self.request(api, 'PATCH', data=orderPostData, headers=headers)
         return self.parseResponse(result, requestDataStr)
 
     def put(self, api, query = {}, postData={}, headers = {}):
         '''PUT请求'''
         api = api.lstrip("/")
-        orderPayload, headers = self._payload(postData, headers)
-        bodyQuery = url_encoder(query)
+        orderQuery, orderPostData, headers = self._payload(query=query, postData = postData, headers = headers)
+        bodyQuery = url_encoder(orderQuery)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result, requestDataStr =  self.request(api, 'PUT', data=orderPayload, headers=headers)
+        result, requestDataStr =  self.request(api, 'PUT', data=orderPostData, headers=headers)
         return self.parseResponse(result, requestDataStr)
 
     def delete(self, api, query = {}, postData={}, headers = {}):
         '''DELETE请求'''
         api = api.lstrip("/")
-        orderPayload, headers = self._payload(postData, headers)
-        bodyQuery = url_encoder(query)
+        orderQuery, orderPostData, headers = self._payload(query=query, postData = postData, headers = headers)
+        bodyQuery = url_encoder(orderQuery)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result, requestDataStr =  self.request(api, 'DELETE', data=orderPayload, headers=headers)
+        result, requestDataStr =  self.request(api, 'DELETE', data=orderPostData, headers=headers)
         return self.parseResponse(result, requestDataStr)
 
     def parseResponse(self, result, requestDataStr):
