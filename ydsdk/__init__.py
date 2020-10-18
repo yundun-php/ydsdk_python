@@ -237,7 +237,6 @@ class YdSdk:
         signData = copy.deepcopy(query)
         for k, v in postData.items():
             signData[k] = v
-        ##orderPayload = OrderedDict(payload)
         orderQuery = toOrderedDict(query)
         orderPostData = toOrderedDict(postData)
         orderSignData = toOrderedDict(signData)
@@ -247,8 +246,9 @@ class YdSdk:
         headers['X-Auth-Sdk-Version'] = '1.0.3'
         headers['Content-Type']  = "application/json;charset=utf-8"
         headers['User-Agent']    = self._userAgent
-        if self._host != "": headers['HOST']  = self._host
-        return orderQuery, orderPostData, headers
+        if self._host != "": headers['HOST'] = self._host
+        headersCopy = copy.deepcopy(headers)
+        return orderQuery, orderPostData, headersCopy
 
     def get(self, api, query={}, headers={}):
         '''GET请求'''

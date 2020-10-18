@@ -8,6 +8,8 @@ verify_ssl = true
 [packages]
 twine = "*"
 gevent = "*"
+aiohttp = "*"
+threadpool = "*"
 
 [requires]
-python_version = "3.5"
+python_version = "3.8"
