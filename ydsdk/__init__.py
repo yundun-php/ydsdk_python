@@ -15,7 +15,7 @@ from urllib.parse import quote, unquote, urlencode
 from urllib.request import Request, urlopen, HTTPRedirectHandler, build_opener
 from urllib.request import HTTPBasicAuthHandler, HTTPPasswordMgrWithDefaultRealm, ProxyHandler, ProxyBasicAuthHandler, HTTPSHandler
 
-version = "0.2.2"
+version = "0.2.3"
 
 machineIpCount = 0
 machineIp = "0.0.0.0"
