@@ -1,5 +1,5 @@
-import ssl
 import json
+import requests
 import time
 import copy
 import socket
@@ -8,12 +8,9 @@ import urllib
 import platform
 import hashlib, base64, hmac
 from inspect import ismethod
+from urllib.parse import urlencode
 from collections import OrderedDict
-from socket import timeout as timeoutError
-from urllib.error import URLError, HTTPError
-from urllib.parse import quote, unquote, urlencode
-from urllib.request import Request, urlopen, HTTPRedirectHandler, build_opener
-from urllib.request import HTTPBasicAuthHandler, HTTPPasswordMgrWithDefaultRealm, ProxyHandler, ProxyBasicAuthHandler, HTTPSHandler
+
 
 version = "0.2.3"
 
@@ -104,17 +101,6 @@ def url_encoder(params):
             _encode_params(params[key], key)
 
     return urlencode(g_encode_params)
-
-class RedirectHandler(HTTPRedirectHandler):
-    '''捕获重定向信息'''
-    redirects = []
-
-    def __init__(self):
-        self.redirects = []
-
-    def redirect_request(self, req, fp, code, msg, hdrs, newurl):
-        self.redirects.append({'code':code, 'url':newurl})
-        return HTTPRedirectHandler.redirect_request(self, req, fp, code, msg, hdrs, newurl)
 
 class YdSdk:
     """云盾SDK
@@ -258,18 +244,30 @@ class YdSdk:
         bodyQuery = url_encoder(orderQuery)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result, requestDataStr =  self.request(api, 'GET', headers=headers)
-        return self.parseResponse(result, requestDataStr)
+        try:
+            requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
+            result = requests.get(api, headers=headers)
+            return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
+        except Exception as e:
+            return "", 0, str(e)
 
-    def post(self, api, query={}, postData={}, headers={}):
+    def post(self, api, query={}, postData={}, headers={}, files={}):
         '''POST请求'''
         api = api.lstrip("/")
         orderQuery, orderPostData, headers = self._payload(query=query, postData = postData, headers = headers)
         bodyQuery = url_encoder(orderQuery)
 
+        del headers['Content-Type']
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result, requestDataStr =  self.request(api, 'POST', data=orderPostData, headers=headers)
-        return self.parseResponse(result, requestDataStr)
+        try:
+            requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
+            if files:
+                result = requests.post(api, data=orderPostData, headers=headers, files=files)
+            else:
+                result = requests.post(api, json=orderPostData, headers=headers)
+            return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
+        except Exception as e:
+            return "", 0, str(e)
 
     def patch(self, api, query = {}, postData={}, headers = {}):
         '''PATCH请求'''
@@ -278,8 +276,12 @@ class YdSdk:
         bodyQuery = url_encoder(orderQuery)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result, requestDataStr =  self.request(api, 'PATCH', data=orderPostData, headers=headers)
-        return self.parseResponse(result, requestDataStr)
+        try:
+            requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
+            result = requests.patch(api, json=orderPostData, headers=headers)
+            return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
+        except Exception as e:
+            return "", 0, str(e)
 
     def put(self, api, query = {}, postData={}, headers = {}):
         '''PUT请求'''
@@ -288,8 +290,12 @@ class YdSdk:
         bodyQuery = url_encoder(orderQuery)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result, requestDataStr =  self.request(api, 'PUT', data=orderPostData, headers=headers)
-        return self.parseResponse(result, requestDataStr)
+        try:
+            requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
+            result =  requests.put(api, json=orderPostData, headers=headers)
+            return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
+        except Exception as e:
+            return "", 0, str(e)
 
     def delete(self, api, query = {}, postData={}, headers = {}):
         '''DELETE请求'''
@@ -298,12 +304,17 @@ class YdSdk:
         bodyQuery = url_encoder(orderQuery)
 
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
-        result, requestDataStr =  self.request(api, 'DELETE', data=orderPostData, headers=headers)
-        return self.parseResponse(result, requestDataStr)
+        try:
+            requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
+            result = requests.delete(api, json=orderPostData, headers=headers)
+            return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
+        except Exception as e:
+            return "", 0, str(e)
 
     def parseResponse(self, result, requestDataStr):
         '''解析 response'''
-        body = result['body'].decode('utf-8')
+        #body = result['body'].decode('utf-8')
+        body = result['body']
         if result['http_code'] == 0:
             return body, {}, result['error']
         else:
@@ -316,113 +327,5 @@ class YdSdk:
             else:
                 if self._logger is not None: self._logger.error('the response body is not json, responseBody: %s requestData: %s' % (body, requestDataStr))
                 return body, {}, 'the response body is not json'
-
-    def request(self, url=None, method="GET", data={}, headers={}, auth={}, proxy={}):
-        '''发起请求'''
-        method = method.upper()
-        requestDataStr = json.dumps({"url": url, "method": method, "data": data, "headers": headers}, ensure_ascii=False)
-        start = time.time()
-        try:
-            #跳转记录
-            redirect_handler = RedirectHandler()
-    
-            #basic验证
-            auth_handler = HTTPBasicAuthHandler()
-            if auth and 'user' in auth.keys() and 'passwd' in auth.keys():
-                passwdHandler = HTTPPasswordMgrWithDefaultRealm()
-                passwdHandler.add_password(realm=None, uri=url, user=auth['user'], passwd=auth['passwd'])
-                auth_handler = HTTPBasicAuthHandler(passwdHandler)
-    
-            #代理
-            proxy_handler = ProxyHandler()
-            if proxy and 'url' in proxy.keys():
-               proxy_handler = ProxyHandler({'http': proxy['url']})
-    
-            #代理验证
-            proxy_auth_handler = ProxyBasicAuthHandler()
-            if proxy and 'url' in proxy.keys() and 'user' in proxy.keys() and 'passwd' in proxy.keys():
-               proxyPasswdHandler = HTTPPasswordMgrWithDefaultRealm()
-               proxyPasswdHandler.add_password(realm=None, uri=proxy['url'], user=proxy['user'], passwd=proxy['passwd'])
-               proxy_auth_handler = ProxyBasicAuthHandler(proxyPasswdHandler)
-    
-            #HTTPS
-            context = ssl.SSLContext()
-            context.verify_mode = ssl.CERT_NONE
-            context.check_hostname = False
-            https_handler = HTTPSHandler(context=context)
-            body = json.dumps(data).encode('utf-8')
-    
-            opener = build_opener(redirect_handler, auth_handler, proxy_handler, proxy_auth_handler, https_handler)
-            request_handler= Request(quote(url, safe=string.printable), data=body, method=method)
-            for key, value in headers.items():
-                request_handler.add_header(key, value)
-            response = opener.open(request_handler, timeout=self._timeout)
-            end = time.time()
-            return {
-                'url': url,
-                'method': method,
-                'request_headers': request_handler.headers,
-                'response_headers': self.formatHeaders(response.getheaders()),
-                'http_code': response.status,
-                'redirects':redirect_handler.redirects,
-                'body': response.read(),
-                'nettime': end-start,
-                'error':''
-            }, requestDataStr
-        except HTTPError as e:          # 400 401 402 403 500 501 502 503 504
-            if self._logger is not None: self._logger.error("%s requestData: %s" % (repr(e), requestDataStr))
-            end = time.time()
-            return {
-                'url': url,
-                'method': method,
-                'request_headers': headers,
-                'response_headers': dict(e.headers),
-                'http_code': e.code,
-                'redirects': [],
-                'body': b'',
-                'nettime': end-start,
-                'error': repr(e)
-            }, requestDataStr
-        except URLError as e:
-            if self._logger is not None: self._logger.error("%s requestData: %s" % (repr(e), requestDataStr))
-            end = time.time()
-            return {
-                'url': url,
-                'method': method,
-                'request_headers': headers,
-                'response_headers': {},
-                'http_code': 0,
-                'redirects': [],
-                'body': b'',
-                'nettime': end-start,
-                'error': repr(e)
-            }, requestDataStr
-        except timeoutError as e:
-            if self._logger is not None: self._logger.error("%s requestData: %s" % (repr(e), requestDataStr))
-            end = time.time()
-            return {
-                'url': url,
-                'method': method,
-                'request_headers': headers,
-                'response_headers': {},
-                'http_code': 0,
-                'redirects': [],
-                'body': b'',
-                'nettime': end-start,
-                'error': repr(e)
-            }, requestDataStr
-        except Exception as e:
-            if self._logger is not None: self._logger.error("%s requestData: %s" % (repr(e), requestDataStr))
-            return {
-                'url': url,
-                'method': method,
-                'request_headers': headers,
-                'response_headers': {},
-                'http_code': 0,
-                'redirects': [],
-                'body': b'',
-                'nettime': 0,
-                'error': repr(e)
-            }, requestDataStr
 
 __all__ = ["get_machine_ip", "YdSdk"]
