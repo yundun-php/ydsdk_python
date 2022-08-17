@@ -31,11 +31,10 @@ def printResult(raw, jsonData, err):
     print("")
 
 sdk = YdSdk({
-    "app_id": 'KjCBrsqvrKH2fjSiYx9J',
-    "app_secert": 'ade3f5cbb354b1e91d72bd9ddd242595', 
-    #"api_pre": "http://api4.yd.local.cn/V4/",
-    "api_pre": "http://yundunapiv4.test.nodevops.cn/V4/",
-    'user_id': 88350, 
+    "app_id": 'xxxxxxxxxxxxxxxxxxxx',
+    "app_secert": 'yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy', 
+    "api_pre": "http://api.local.com/V4/",
+    'user_id': 1111, 
     "timeout": 30,
     "client_ip": "127.0.0.1",
     "user_agent": "",
@@ -55,8 +54,8 @@ postData = {
     'ca_key':'',
 }
 files = [
-    ('ca_crt', ('git.nodevops.cn.pem', open('/home/jingwu/Downloads/git.nodevops.cn.pem', 'rb'), 'image/png')),
-    ('ca_key', ('git.nodevops.cn.key', open('/home/jingwu/Downloads/git.nodevops.cn.key', 'rb'), 'image/png')),
+    ('ca_crt', ('git.nodevops.cn.pem', open('./x.pem', 'rb'), 'image/png')),
+    ('ca_key', ('git.nodevops.cn.key', open('./x.key', 'rb'), 'image/png')),
 ]
 raw, body, err = sdk.post('Web.ca.self.add', postData=postData, files=files)
 printResult(raw, body, err)

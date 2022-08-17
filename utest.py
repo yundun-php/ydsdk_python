@@ -9,11 +9,10 @@ class TestYdSdk(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.sdk = YdSdk({
-            "app_id": 'KjCBrsqvrKH2fjSiYx9J',
-            "app_secert": 'ade3f5cbb354b1e91d72bd9ddd242595', 
-            #"api_pre": "http://api4.yd.local.cn/V4/",
-            "api_pre": "http://yundunapiv4.test.nodevops.cn/V4/",
-            'user_id': 88350, 
+            "app_id": 'xxxxxxxxxxxxxxxxxxxx',
+            "app_secert": 'yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy', 
+            "api_pre": "http://api.local.com/V4/",
+            'user_id': 1111, 
             "client_ip": "127.0.0.1",
             "user_agent": "",
             "timeout": 30,
