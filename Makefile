@@ -1,6 +1,8 @@
 push:
+	pip3 install wheel
+	pip3 install --upgrade setuptools
 	rm -rf ./dist ./build ./ydsdk.egg-info
-	pipenv run python setup.py sdist bdist_wheel
-	pipenv run python -m twine upload dist/*
+	python3 setup.py sdist bdist_wheel
+	python3 -m twine upload dist/*
 install:
-	pipenv run python setup.py install
+	python3 setup.py install
