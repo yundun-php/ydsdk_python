@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 from collections import OrderedDict
 
 
-version = "0.2.5"
+version = "0.2.6"
 
 machineIpCount = 0
 machineIp = "0.0.0.0"
@@ -165,6 +165,7 @@ class YdSdk:
     _userId = 0                                                 ## 用户ID
     _clientIp = ""                                              ## 客户端IP
     _userAgent = ""                                             ## userAgent, 内置
+    proxy_url = ""                                              ## 代理配置，例如 1.1.1.1:80
     _logger = None
     _oldSign = False                                            ## 兼容旧版的签名发送机制
 
@@ -180,6 +181,7 @@ class YdSdk:
         self._host      = 'host' in params       and params['host']         or ''
         self._timeout   = 'timeout' in params    and params['timeout']      or 30
         self._oldSign   = oldSign
+        self._proxy_url     = 'proxy_url' in params     and params['proxy_url']       or ''
         if 'logger' in params:
             logger = params['logger']
             if ismethod(logger.debug) and ismethod(logger.info) and ismethod(logger.warning) and ismethod(logger.error):
@@ -262,6 +264,13 @@ class YdSdk:
         headersCopy = copy.deepcopy(headers)
         return orderQuery, orderPostData, headersCopy
 
+    def proxies_cfg(self):
+        if self._proxy_url != "":
+            proxies = {'http': 'http://' + self._proxy_url}
+        else:
+            proxies = {}
+        return proxies
+
     def get(self, api, query={}, headers={}):
         '''GET请求'''
         api = api.lstrip("/")
@@ -272,7 +281,7 @@ class YdSdk:
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
         try:
             requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
-            result = requests.get(api, headers=headers)
+            result = requests.get(api, headers=headers, proxies=self.proxies_cfg())
             return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
         except Exception as e:
             return "", 0, str(e)
@@ -287,12 +296,12 @@ class YdSdk:
         try:
             requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
             if self._oldSign:
-                result = requests.post(api, data=orderPostData, headers=headers, files=files)
+                result = requests.post(api, data=orderPostData, headers=headers, files=files, proxies=self.proxies_cfg())
             elif files:
                 del headers['Content-Type']
-                result = requests.post(api, data=orderPostData, headers=headers, files=files)
+                result = requests.post(api, data=orderPostData, headers=headers, files=files, proxies=self.proxies_cfg())
             else:
-                result = requests.post(api, json=orderPostData, headers=headers)
+                result = requests.post(api, json=orderPostData, headers=headers, proxies=self.proxies_cfg())
             return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
         except Exception as e:
             return "", 0, str(e)
@@ -307,9 +316,9 @@ class YdSdk:
         try:
             requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
             if self._oldSign:
-                result = requests.patch(api, data=orderPostData, headers=headers)
+                result = requests.patch(api, data=orderPostData, headers=headers, proxies=self.proxies_cfg())
             else:
-                result = requests.patch(api, json=orderPostData, headers=headers)
+                result = requests.patch(api, json=orderPostData, headers=headers, proxies=self.proxies_cfg())
             return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
         except Exception as e:
             return "", 0, str(e)
@@ -324,9 +333,9 @@ class YdSdk:
         try:
             requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
             if self._oldSign:
-                result =  requests.put(api, data=orderPostData, headers=headers)
+                result =  requests.put(api, data=orderPostData, headers=headers, proxies=self.proxies_cfg())
             else:
-                result =  requests.put(api, json=orderPostData, headers=headers)
+                result =  requests.put(api, json=orderPostData, headers=headers, proxies=self.proxies_cfg())
             return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
         except Exception as e:
             return "", 0, str(e)
@@ -341,9 +350,9 @@ class YdSdk:
         try:
             requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
             if self._oldSign:
-                result = requests.delete(api, data=orderPostData, headers=headers)
+                result = requests.delete(api, data=orderPostData, headers=headers, proxies=self.proxies_cfg())
             else:
-                result = requests.delete(api, json=orderPostData, headers=headers)
+                result = requests.delete(api, json=orderPostData, headers=headers, proxies=self.proxies_cfg())
             return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
         except Exception as e:
             return "", 0, str(e)
