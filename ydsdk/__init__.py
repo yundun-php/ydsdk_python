@@ -212,30 +212,51 @@ class YdSdk:
 
     def _payload(self, query = {}, postData = {}, headers = {}, dataFrom = ''):
         '''构造payload数据, 并对数据做签名'''
-        if dataFrom == 'get':
-            query['user_id']          = str(self._userId)
-            query['client_ip']        = self._clientIp
-            query['client_userAgent'] = self._userAgent
-            query['algorithm']        = 'HMAC-SHA256'
-            query['issued_at']        = str(time.time())
+        orderQuery = {}
+        orderPostData = {}
+        if self._oldSign:
+            if dataFrom == 'get':
+                query['user_id']          = str(self._userId)
+                query['client_ip']        = self._clientIp
+                query['client_userAgent'] = self._userAgent
+                orderQuery = toOrderedDict({"body": query})
+                signData = orderQuery
+            else:
+                postData['user_id']          = self._userId
+                postData['client_ip']        = self._clientIp
+                postData['client_userAgent'] = self._userAgent
+                orderPostData = toOrderedDict({"body": postData})
+                signData = orderPostData
+            signData['algorithm'] = 'HMAC-SHA256'
+            signData['issued_at'] = str(time.time())
+            orderSignData = toOrderedDict(signData)
+            headers['X-Auth-Sign']   = self.sign(orderSignData, dataFrom)
         else:
-            postData['user_id']          = self._userId
-            postData['client_ip']        = self._clientIp
-            postData['client_userAgent'] = self._userAgent
-            postData['algorithm']        = 'HMAC-SHA256'
-            postData['issued_at']        = str(time.time())
-        query = dictValueToStr(query)
-        signData = copy.deepcopy(query)
-        for k, v in postData.items():
-            signData[k] = v
-        orderQuery = toOrderedDict(query)
-        orderPostData = toOrderedDict(postData)
-        orderSignData = toOrderedDict(signData)
+            if dataFrom == 'get':
+                query['user_id']          = str(self._userId)
+                query['client_ip']        = self._clientIp
+                query['client_userAgent'] = self._userAgent
+                query['algorithm']        = 'HMAC-SHA256'
+                query['issued_at']        = str(time.time())
+            else:
+                postData['user_id']          = self._userId
+                postData['client_ip']        = self._clientIp
+                postData['client_userAgent'] = self._userAgent
+                postData['algorithm']        = 'HMAC-SHA256'
+                postData['issued_at']        = str(time.time())
 
-        headers['X-Auth-Sign']   = self.sign(orderSignData, dataFrom)
+            query = dictValueToStr(query)
+            signData = copy.deepcopy(query)
+            for k, v in postData.items():
+                signData[k] = v
+            orderQuery = toOrderedDict(query)
+            orderPostData = toOrderedDict(postData)
+            orderSignData = toOrderedDict(signData)
+            headers['X-Auth-Sign']   = self.sign(orderSignData, dataFrom)
+            headers['Content-Type']  = "application/json;charset=utf-8"
+
         headers['X-Auth-App-Id'] = self._appId
         headers['X-Auth-Sdk-Version'] = '1.0.3'
-        headers['Content-Type']  = "application/json;charset=utf-8"
         headers['User-Agent']    = self._userAgent
         if self._host != "": headers['HOST'] = self._host
         headersCopy = copy.deepcopy(headers)
@@ -262,11 +283,13 @@ class YdSdk:
         orderQuery, orderPostData, headers = self._payload(query=query, postData = postData, headers = headers)
         bodyQuery = url_encoder(orderQuery)
 
-        del headers['Content-Type']
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
         try:
             requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
-            if files:
+            if self._oldSign:
+                result = requests.post(api, data=orderPostData, headers=headers, files=files)
+            elif files:
+                del headers['Content-Type']
                 result = requests.post(api, data=orderPostData, headers=headers, files=files)
             else:
                 result = requests.post(api, json=orderPostData, headers=headers)
@@ -283,7 +306,10 @@ class YdSdk:
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
         try:
             requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
-            result = requests.patch(api, json=orderPostData, headers=headers)
+            if self._oldSign:
+                result = requests.patch(api, data=orderPostData, headers=headers)
+            else:
+                result = requests.patch(api, json=orderPostData, headers=headers)
             return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
         except Exception as e:
             return "", 0, str(e)
@@ -297,7 +323,10 @@ class YdSdk:
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
         try:
             requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
-            result =  requests.put(api, json=orderPostData, headers=headers)
+            if self._oldSign:
+                result =  requests.put(api, data=orderPostData, headers=headers)
+            else:
+                result =  requests.put(api, json=orderPostData, headers=headers)
             return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
         except Exception as e:
             return "", 0, str(e)
@@ -311,7 +340,10 @@ class YdSdk:
         api = bodyQuery == "" and "%s/%s" % (self._apiPre, api) or "%s/%s?%s" % (self._apiPre, api, bodyQuery)
         try:
             requestDataStr = json.dumps({"url": api, "method": "GET", "data": {}, "headers": headers}, ensure_ascii=False)
-            result = requests.delete(api, json=orderPostData, headers=headers)
+            if self._oldSign:
+                result = requests.delete(api, data=orderPostData, headers=headers)
+            else:
+                result = requests.delete(api, json=orderPostData, headers=headers)
             return self.parseResponse({"body":result.text, "http_code":result.status_code, "error":""}, requestDataStr)
         except Exception as e:
             return "", 0, str(e)
@@ -334,3 +366,4 @@ class YdSdk:
                 return body, {}, 'the response body is not json'
 
 __all__ = ["get_machine_ip", "YdSdk"]
+
