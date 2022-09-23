@@ -166,8 +166,9 @@ class YdSdk:
     _clientIp = ""                                              ## 客户端IP
     _userAgent = ""                                             ## userAgent, 内置
     _logger = None
+    _oldSign = False                                            ## 兼容旧版的签名发送机制
 
-    def __init__(self, params = {}):
+    def __init__(self, params = {}, oldSign = False):
         global version
         uname = platform.uname()
         self._appId     = 'app_id' in params     and params['app_id']       or ''
@@ -178,6 +179,7 @@ class YdSdk:
         self._apiPre    = 'api_pre' in params    and params['api_pre'].rstrip("/")      or ''
         self._host      = 'host' in params       and params['host']         or ''
         self._timeout   = 'timeout' in params    and params['timeout']      or 30
+        self._oldSign   = oldSign
         if 'logger' in params:
             logger = params['logger']
             if ismethod(logger.debug) and ismethod(logger.info) and ismethod(logger.warning) and ismethod(logger.error):
@@ -193,10 +195,13 @@ class YdSdk:
         jraw = json.dumps(orderData, separators=(',', ':'))
         base64Raw = base64.b64encode(jraw.encode('utf-8'))
         sign = base64.b64encode(hmac.new(self._appSecert.encode('utf-8'), base64Raw, digestmod=hashlib.sha256).digest())
-        signStr = sign.decode('utf-8')
-        signReplace = signStr.replace("+", "-")
-        signReplace = signReplace.replace("/", "_")
-        return signReplace
+        if self._oldSign:
+            return "%s.%s" % (sign.decode('utf-8'), base64Raw.decode('utf-8'))
+        else:
+            signStr = sign.decode('utf-8')
+            signReplace = signStr.replace("+", "-")
+            signReplace = signReplace.replace("/", "_")
+            return signReplace
 
     def formatHeaders(self, headers = {}):
         '''格式化header头'''
