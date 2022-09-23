@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 from collections import OrderedDict
 
 
-version = "0.2.4"
+version = "0.2.5"
 
 machineIpCount = 0
 machineIp = "0.0.0.0"
