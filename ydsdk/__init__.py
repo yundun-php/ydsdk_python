@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 from collections import OrderedDict
 
 
-version = "0.2.6"
+version = "0.2.7"
 
 machineIpCount = 0
 machineIp = "0.0.0.0"
@@ -182,6 +182,7 @@ class YdSdk:
         self._timeout   = 'timeout' in params    and params['timeout']      or 30
         self._oldSign   = oldSign
         self._proxy_url     = 'proxy_url' in params     and params['proxy_url']       or ''
+        self._https_proxy_url = 'https_proxy_url' in params and params['https_proxy_url'] or ''
         if 'logger' in params:
             logger = params['logger']
             if ismethod(logger.debug) and ismethod(logger.info) and ismethod(logger.warning) and ismethod(logger.error):
@@ -265,10 +266,11 @@ class YdSdk:
         return orderQuery, orderPostData, headersCopy
 
     def proxies_cfg(self):
+        proxies = {}
+        if self._https_proxy_url:
+            proxies['https'] = 'https://' + self._https_proxy_url
         if self._proxy_url != "":
-            proxies = {'http': 'http://' + self._proxy_url}
-        else:
-            proxies = {}
+            proxies['http'] = 'http://' + self._proxy_url
         return proxies
 
     def get(self, api, query={}, headers={}):
